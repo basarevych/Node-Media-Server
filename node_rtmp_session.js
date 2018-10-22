@@ -357,7 +357,7 @@ class NodeRtmpSession {
     chunksOffset += chunkBasicHeader.length;
     chunkMessageHeader.copy(chunks, chunksOffset);
     chunksOffset += chunkMessageHeader.length;
-    if (useExtendedTimestamp) {
+    if (useExtendedTimestamp && header.timestamp < 4294967295) {
       chunks.writeUInt32BE(header.timestamp, chunksOffset);
       chunksOffset += 4;
     }
@@ -369,7 +369,7 @@ class NodeRtmpSession {
         payloadOffset += chunkSize;
         chunkBasicHeader3.copy(chunks, chunksOffset);
         chunksOffset += chunkBasicHeader3.length;
-        if (useExtendedTimestamp) {
+        if (useExtendedTimestamp && header.timestamp < 4294967295) {
           chunks.writeUInt32BE(header.timestamp, chunksOffset);
           chunksOffset += 4;
         }
