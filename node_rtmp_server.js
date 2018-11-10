@@ -11,10 +11,12 @@ const NodeCoreUtils = require('./node_core_utils');
 
 const context = require('./node_core_ctx');
 
+const RTMP_HOST = '127.0.0.1';
 const RTMP_PORT = 1935;
 
 class NodeRtmpServer {
   constructor(config) {
+    config.rtmp.host = this.host = config.rtmp.host ? config.rtmp.host : RTMP_HOST;
     config.rtmp.port = this.port = config.rtmp.port ? config.rtmp.port : RTMP_PORT;
     this.tcpServer = Net.createServer((socket) => {
       let session = new NodeRtmpSession(config, socket);
@@ -23,8 +25,8 @@ class NodeRtmpServer {
   }
 
   run() {
-    this.tcpServer.listen(this.port, () => {
-      Logger.log(`Node Media Rtmp Server started on port: ${this.port}`);
+    this.tcpServer.listen(this.port, this.host, () => {
+      Logger.log(`Node Media Rtmp Server started on port: ${this.host}:${this.port}`);
     });
 
     this.tcpServer.on('error', (e) => {
