@@ -94,7 +94,6 @@ const RtmpPacket = {
         stream_id: 0
       },
       clock: 0,
-      delta: 0,
       payload: null,
       capacity: 0,
       bytes: 0
@@ -431,14 +430,15 @@ class NodeRtmpSession {
           if (this.parserBytes >= size) {
             if (this.parserPacket.header.timestamp === 0xFFFFFF) {
               extended_timestamp = this.parserBuffer.readUInt32BE(rtmpHeaderSize[this.parserPacket.header.fmt] + this.parserBasicBytes);
+            } else {
+              extended_timestamp = this.parserPacket.header.timestamp;
             }
 
-            if (0 === this.parserPacket.bytes) {
+            if (this.parserPacket.bytes === 0) {
               if (RTMP_CHUNK_TYPE_0 === this.parserPacket.header.fmt) {
-                this.parserPacket.clock = 0xFFFFFF === this.parserPacket.header.timestamp ? extended_timestamp : this.parserPacket.header.timestamp;
-                this.parserPacket.delta = 0;
+                this.parserPacket.clock = extended_timestamp;
               } else {
-                this.parserPacket.delta = 0xFFFFFF === this.parserPacket.header.timestamp ? extended_timestamp : this.parserPacket.header.timestamp;
+                this.parserPacket.clock += extended_timestamp;
               }
               this.rtmpPacketAlloc();
             }
@@ -457,7 +457,6 @@ class NodeRtmpSession {
           if (this.parserPacket.bytes >= this.parserPacket.header.length) {
             this.parserState = RTMP_PARSE_INIT;
             this.parserPacket.bytes = 0;
-            this.parserPacket.clock += this.parserPacket.delta;
             this.rtmpHandler();
           } else if (0 === (this.parserPacket.bytes % this.inChunkSize)) {
             this.parserState = RTMP_PARSE_INIT;
@@ -498,7 +497,11 @@ class NodeRtmpSession {
     this.parserPacket.header.fmt = fmt;
     this.parserPacket.header.cid = cid;
     this.rtmpChunkMessageHeaderRead();
-    // Logger.log(this.parserPacket);
+
+    if(this.parserPacket.header.type > RTMP_TYPE_METADATA) {
+      Logger.error("rtmp packet parse error.",this.parserPacket);
+      this.stop();
+    }
 
   }
 
@@ -982,13 +985,6 @@ class NodeRtmpSession {
 
   onPublish(invokeMessage) {
     if (typeof invokeMessage.streamName !== 'string') {
-      //Wirecast fix #67
-      /**
-       * String 'publish'
-       * Number 0
-       * Null
-       * Boolean false ??? 这是要爪子?
-       */
       return;
     }
     this.publishStreamPath = '/' + this.appname + '/' + invokeMessage.streamName.split('?')[0];
@@ -1037,7 +1033,7 @@ class NodeRtmpSession {
         if (!this.isIPC) {
           context.nodeEvent.emit('postPublish', this.id, this.publishStreamPath, this.publishArgs);
         }
-      }, 200);//200毫秒后基本上能得到音视频编码信息，这时候再发出事件，便于转码器做判断
+      }, 1000);//TODO 只提交事件,不传音视频参数,由转码器自行分析
 
     }
   }
