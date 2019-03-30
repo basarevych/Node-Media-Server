@@ -30,7 +30,6 @@
 # Todo 
 - [x] 支持录制为MP4回放
 - [x] 支持实时转码
-- [x] 支持多核模式
 - [x] 支持低延迟HLS/DASH
 - [x] 支持服务器和流媒体信息统计
 - [ ] 服务器和流媒体信息统计的前端样式
@@ -42,6 +41,11 @@
 - [ ] 不依赖ffmpeg的零延迟rtmp/rtsp中继 
 
 # 用法 
+## docker 版本
+```bash
+docker run --name nms -d -p 1935:1935 -p 8000:8000 illuspas/node-media-server
+```
+
 ## git 版本
 ```bash
 mkdir nms
@@ -55,23 +59,23 @@ node app.js
 node cluster.js
 ```
 ## npm 版本(推荐)
-### 单核模式
 ```bash
 mkdir nms
 cd nms
 npm install node-media-server
+vi app.js
 ```
 
 ```js
-const { NodeMediaServer } = require('node-media-server');
+const NodeMediaServer = require('node-media-server');
 
 const config = {
   rtmp: {
     port: 1935,
     chunk_size: 60000,
     gop_cache: true,
-    ping: 60,
-    ping_timeout: 30
+    ping: 30,
+    ping_timeout: 60
   },
   http: {
     port: 8000,
@@ -81,37 +85,6 @@ const config = {
 
 var nms = new NodeMediaServer(config)
 nms.run();
-```
-
-### 多核模式
-```bash
-mkdir nms
-cd nms
-npm install node-media-server
-```
-
-```js
-const { NodeMediaCluster } = require('node-media-server');
-const numCPUs = require('os').cpus().length;
-const config = {
-  rtmp: {
-    port: 1935,
-    chunk_size: 60000,
-    gop_cache: true,
-    ping: 60,
-    ping_timeout: 30
-  },
-  http: {
-    port: 8000,
-    allow_origin: '*'
-  },
-  cluster: {
-    num: numCPUs
-  }
-};
-
-var nmcs = new NodeMediaCluster(config)
-nmcs.run();
 ```
 
 # 直播发布
@@ -149,7 +122,7 @@ ffplay http://localhost:8000/live/STREAM_NAME.flv
 ## 使用 flv.js 播放 http-flv 流格式
 
 ```html
-<script src="https://cdn.bootcss.com/flv.js/1.4.0/flv.min.js"></script>
+<script src="https://cdn.bootcss.com/flv.js/1.5.0/flv.min.js"></script>
 <video id="videoElement"></video>
 <script>
     if (flvjs.isSupported()) {
@@ -168,7 +141,7 @@ ffplay http://localhost:8000/live/STREAM_NAME.flv
 ## 使用 flv.js 播放 websocket-flv 流格式
 
 ```html
-<script src="https://cdn.bootcss.com/flv.js/1.3.3/flv.min.js"></script>
+<script src="https://cdn.bootcss.com/flv.js/1.5.0/flv.min.js"></script>
 <video id="videoElement"></video>
 <script>
     if (flvjs.isSupported()) {
@@ -200,8 +173,8 @@ const config = {
     port: 1935,
     chunk_size: 60000,
     gop_cache: true,
-    ping: 60,
-    ping_timeout: 30
+    ping: 30,
+    ping_timeout: 60
   },
   http: {
     port: 8000,
@@ -291,15 +264,15 @@ openssl x509 -req -in certrequest.csr -signkey privatekey.pem -out certificate.p
 
 ## 配置 https支持
 ```js
-const { NodeMediaServer } = require('node-media-server');
+const NodeMediaServer = require('node-media-server');
 
 const config = {
   rtmp: {
     port: 1935,
     chunk_size: 60000,
     gop_cache: true,
-    ping: 60,
-    ping_timeout: 30
+    ping: 30,
+    ping_timeout: 60
   },
   http: {
     port: 8000,
@@ -465,15 +438,15 @@ http://localhost:8000/api/streams
 # 转 HLS/DASH 直播流
 
 ```js
-const { NodeMediaServer } = require('node-media-server');
+const NodeMediaServer = require('node-media-server');
 
 const config = {
   rtmp: {
     port: 1935,
     chunk_size: 60000,
     gop_cache: true,
-    ping: 60,
-    ping_timeout: 30
+    ping: 30,
+    ping_timeout: 60
   },
   http: {
     port: 8000,
@@ -501,15 +474,15 @@ nms.run();
 # 直播录制为MP4文件
 
 ```JS
-const { NodeMediaServer } = require('node-media-server');
+const NodeMediaServer = require('node-media-server');
 
 const config = {
   rtmp: {
     port: 1935,
     chunk_size: 60000,
     gop_cache: true,
-    ping: 60,
-    ping_timeout: 30
+    ping: 30,
+    ping_timeout: 60
   },
   http: {
     port: 8000,
@@ -611,8 +584,11 @@ https://github.com/NodeMedia/NodeMediaClient-iOS
 ## React-Native SDK
 https://github.com/NodeMedia/react-native-nodemediaclient
 
-## FFmpeg-hw-win32
-https://github.com/illuspas/ffmpeg-hw-win32
+## NodePlayer.js HTML5 live player
+* 使用 asm.js 实现
+* http-flv/ws-flv 协议
+* H.264/H.265 + AAC/Nellymoser/G.711 解码器
+* 超低延迟，自动消累积延迟 (支持 iOS safari 浏览器)
 
 ## Windows 浏览器插件(ActiveX/NPAPI)
 * H.264/H.265+AAC rtmp 推流器
@@ -624,9 +600,7 @@ https://github.com/illuspas/ffmpeg-hw-win32
 http://www.nodemedia.cn/products/node-media-client/win/
 
 # 感谢
-* Javier Gomez javiergomezmora@***.com
-* trustfarm
-* Anonymous
-* leeoxiang leeoxiang@***.com
-* Aaron Turner (@torch2424) torch2424@***.com
+strive, 树根, 疯狂的台灯, 枫叶, lzq, 番茄, smicroz , 熊科辉, Ken Lee , Erik Herz, Javier Gomez, trustfarm, leeoxiang, Aaron Turner， Anonymous  
+
+感谢你们的大力支持！
 

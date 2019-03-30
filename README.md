@@ -32,7 +32,6 @@ A Node.js implementation of RTMP/HTTP-FLV/WS-FLV/HLS/DASH Media Server
 # Todo 
 - [x] support record stream 
 - [x] support transcode
-- [x] support cluster
 - [x] support low latency hls
 - [x] server and streams status
 - [ ] server monitor frontend
@@ -45,6 +44,11 @@ A Node.js implementation of RTMP/HTTP-FLV/WS-FLV/HLS/DASH Media Server
 - [ ] support webrtc 
  
 # Usage 
+## docker version (only_linux_x64)
+```bash
+docker run --name nms -d -p 1935:1935 -p 8000:8000 illuspas/node-media-server
+```
+
 ## git version
 ```bash
 mkdir nms
@@ -53,29 +57,26 @@ git clone https://github.com/illuspas/Node-Media-Server
 npm i
 node app.js
 ```
->Run with Multicore mode 
-```
-node cluster.js
-```
 
 ## npm version (recommended)
-### Singlecore mode
+
 ```bash
 mkdir nms
 cd nms
 npm install node-media-server
+vi app.js
 ```
 
 ```js
-const { NodeMediaServer } = require('node-media-server');
+const NodeMediaServer = require('node-media-server');
 
 const config = {
   rtmp: {
     port: 1935,
     chunk_size: 60000,
     gop_cache: true,
-    ping: 60,
-    ping_timeout: 30
+    ping: 30,
+    ping_timeout: 60
   },
   http: {
     port: 8000,
@@ -85,37 +86,10 @@ const config = {
 
 var nms = new NodeMediaServer(config)
 nms.run();
-
 ```
-### Multicore cluster mode
+
 ```bash
-mkdir nms
-cd nms
-npm install node-media-server
-```
-
-```js
-const { NodeMediaCluster } = require('node-media-server');
-const numCPUs = require('os').cpus().length;
-const config = {
-  rtmp: {
-    port: 1935,
-    chunk_size: 60000,
-    gop_cache: true,
-    ping: 60,
-    ping_timeout: 30
-  },
-  http: {
-    port: 8000,
-    allow_origin: '*'
-  },
-  cluster: {
-    num: numCPUs
-  }
-};
-
-var nmcs = new NodeMediaCluster(config)
-nmcs.run();
+node app.js
 ```
 
 # Publishing live streams
@@ -168,7 +142,7 @@ http://localhost:8000/live/STREAM_NAME/index.mpd
 ## via flv.js over http-flv
 
 ```html
-<script src="https://cdn.bootcss.com/flv.js/1.4.0/flv.min.js"></script>
+<script src="https://cdn.bootcss.com/flv.js/1.5.0/flv.min.js"></script>
 <video id="videoElement"></video>
 <script>
     if (flvjs.isSupported()) {
@@ -187,7 +161,7 @@ http://localhost:8000/live/STREAM_NAME/index.mpd
 ## via flv.js over websocket-flv
 
 ```html
-<script src="https://cdn.bootcss.com/flv.js/1.4.0/flv.min.js"></script>
+<script src="https://cdn.bootcss.com/flv.js/1.5.0/flv.min.js"></script>
 <video id="videoElement"></video>
 <script>
     if (flvjs.isSupported()) {
@@ -217,7 +191,7 @@ Modifying the logging type is easy - just add a new value `logType` in the confi
 By default, this is set to show errors and generic info internally (setting 2).
 
 ```js
-const {NodeMediaServer} = require('node-media-server');
+const NodeMediaServer = require('node-media-server');
 
 const config = {
   logType: 3,
@@ -226,8 +200,8 @@ const config = {
     port: 1935,
     chunk_size: 60000,
     gop_cache: true,
-    ping: 60,
-    ping_timeout: 30
+    ping: 30,
+    ping_timeout: 60
   },
   http: {
     port: 8000,
@@ -256,8 +230,8 @@ const config = {
     port: 1935,
     chunk_size: 60000,
     gop_cache: true,
-    ping: 60,
-    ping_timeout: 30
+    ping: 30,
+    ping_timeout: 60
   },
   http: {
     port: 8000,
@@ -344,15 +318,15 @@ openssl x509 -req -in certrequest.csr -signkey privatekey.pem -out certificate.p
 
 ## Config https
 ```js
-const {NodeMediaServer} = require('node-media-server');
+const NodeMediaServer = require('node-media-server');
 
 const config = {
   rtmp: {
     port: 1935,
     chunk_size: 60000,
     gop_cache: true,
-    ping: 60,
-    ping_timeout: 30
+    ping: 30,
+    ping_timeout: 60
   },
   http: {
     port: 8000,
@@ -517,15 +491,15 @@ http://localhost:8000/api/streams
 
 # Remux to HLS/DASH live stream
 ```js
-const {NodeMediaServer} = require('node-media-server');
+const NodeMediaServer = require('node-media-server');
 
 const config = {
   rtmp: {
     port: 1935,
     chunk_size: 60000,
     gop_cache: true,
-    ping: 60,
-    ping_timeout: 30
+    ping: 30,
+    ping_timeout: 60
   },
   http: {
     port: 8000,
@@ -550,17 +524,17 @@ var nms = new NodeMediaServer(config)
 nms.run();
 ```
 
-# Record to MP4
-```JS
-const {NodeMediaServer} = require('node-media-server');
+# Remux to HLS/DASH live stream with audio transcode
+```js
+const NodeMediaServer = require('node-media-server');
 
 const config = {
   rtmp: {
     port: 1935,
     chunk_size: 60000,
     gop_cache: true,
-    ping: 60,
-    ping_timeout: 30
+    ping: 30,
+    ping_timeout: 60
   },
   http: {
     port: 8000,
@@ -571,7 +545,46 @@ const config = {
     ffmpeg: '/usr/local/bin/ffmpeg',
     tasks: [
       {
-        app: 'vod',
+        app: 'live',
+        vc: "copy",
+        vcParam: [],
+        ac: "aac",
+        acParam: ['-ab', '64k', '-ac', '1', '-ar', '44100'],
+        hls: true,
+        hlsFlags: '[hls_time=2:hls_list_size=3:hls_flags=delete_segments]',
+        dash: true,
+        dashFlags: '[f=dash:window_size=3:extra_window_size=5]'
+      }
+    ]
+  }
+};
+
+var nms = new NodeMediaServer(config)
+nms.run();
+```
+
+# Record to MP4
+```JS
+const NodeMediaServer = require('node-media-server');
+
+const config = {
+  rtmp: {
+    port: 1935,
+    chunk_size: 60000,
+    gop_cache: true,
+    ping: 30,
+    ping_timeout: 60
+  },
+  http: {
+    port: 8000,
+    mediaroot: './media',
+    allow_origin: '*'
+  },
+  trans: {
+    ffmpeg: '/usr/local/bin/ffmpeg',
+    tasks: [
+      {
+        app: 'live',
         mp4: true,
         mp4Flags: '[movflags=faststart]',
       }
@@ -665,8 +678,13 @@ https://github.com/NodeMedia/NodeMediaClient-iOS
 ## React-Native SDK
 https://github.com/NodeMedia/react-native-nodemediaclient
 
-## FFmpeg-hw-win32
-https://github.com/illuspas/ffmpeg-hw-win32
+## NodePlayer.js HTML5 live player
+* Implemented with asm.js
+* http-flv/ws-flv
+* H.264/H.265 + AAC/Nellymoser/G.711 decoder
+* Ultra low latency (Support for iOS safari browser)
+
+http://www.nodemedia.cn/products/node-media-player
 
 ## Windows browser plugin(ActiveX/NPAPI)
 * H.264/H.265+AAC rtmp publisher
@@ -675,11 +693,8 @@ https://github.com/illuspas/ffmpeg-hw-win32
 * Ultra low latency rtmp/rtsp/http live player
 * Only 6MB installation package
 
-http://www.nodemedia.cn/products/node-media-client/win/
+http://www.nodemedia.cn/products/node-media-client/win
 
 # Thanks
-* Javier Gomez javiergomezmora@***.com
-* trustfarm
-* Anonymous
-* leeoxiang leeoxiang@***.com
-* Aaron Turner (@torch2424) torch2424@***.com
+strive, 树根, 疯狂的台灯, 枫叶, lzq, 番茄, smicroz , 熊科辉, Ken Lee , Erik Herz, Javier Gomez, trustfarm, leeoxiang, Aaron Turner， Anonymous  
+Thank you for your support.
